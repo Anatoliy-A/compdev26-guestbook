@@ -1,0 +1,10 @@
+/guestbook
+/guestbook.exe
+AGENTS.md
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12

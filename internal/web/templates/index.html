@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guestbook</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    form { display: grid; gap: .75rem; margin-bottom: 2rem; }
+    label { display: grid; gap: .25rem; }
+    input, textarea, button { font: inherit; padding: .5rem; }
+    .error { color: #b00020; }
+    .entry { border-top: 1px solid #ddd; padding: .75rem 0; }
+    .meta { color: #666; font-size: .85rem; }
+    .entry p { margin: .25rem 0 0; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Guestbook</h1>
+  {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+  <form method="post" action="/">
+    <label>Name <input name="name" maxlength="{{.MaxName}}" required value="{{.Name}}"></label>
+    <label>Message <textarea name="message" maxlength="{{.MaxMessage}}" rows="3" required>{{.Message}}</textarea></label>
+    <button type="submit">Sign the guestbook</button>
+  </form>
+  {{range .Entries}}
+  <div class="entry">
+    <strong>{{.Name}}</strong> <span class="meta">{{.CreatedAt.Format "2006-01-02 15:04 UTC"}}</span>
+    <p>{{.Message}}</p>
+  </div>
+  {{else}}
+  <p>No entries yet. Be the first!</p>
+  {{end}}
+</body>
+</html>
