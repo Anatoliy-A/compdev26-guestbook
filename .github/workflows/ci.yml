@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
+    # These paths are excluded from the image (see .dockerignore), so they never need a new deploy PR.
+    paths-ignore:
+      - ".github/**"
+      - "**/*.md"
     tags: ["v*"]
 
 permissions:
