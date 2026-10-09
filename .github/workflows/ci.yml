@@ -46,6 +46,8 @@ jobs:
   image:
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
     permissions:
       contents: read
       packages: write
@@ -114,3 +116,63 @@ jobs:
             echo
             echo "\`${image}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  propose-deployment:
+    needs: image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      GITOPS_REPO: ${{ github.repository_owner }}/compdev26-gitops
+      DIGEST: ${{ needs.image.outputs.digest }}
+      GH_TOKEN: ${{ secrets.GITOPS_PR_TOKEN }}
+      SOURCE_SHA: ${{ github.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Check inputs
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Repository secret GITOPS_PR_TOKEN is not set"
+            exit 1
+          fi
+          if ! [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Image digest is missing or malformed"
+            exit 1
+          fi
+
+      - name: Open GitOps pull request
+        run: |
+          set -euo pipefail
+          branch="deploy/guestbook-${DIGEST:7:12}"
+          file=environments/lab/guestbook/kustomization.yaml
+
+          if [ -n "$(gh pr list --repo "$GITOPS_REPO" --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            echo "A pull request for $branch is already open"
+            exit 0
+          fi
+
+          gh repo clone "$GITOPS_REPO" gitops -- --depth 1
+          cd gitops
+          gh auth setup-git
+
+          grep -q 'digest: sha256:' "$file"
+          if grep -q "$DIGEST" "$file"; then
+            echo "The lab overlay already uses $DIGEST"
+            exit 0
+          fi
+
+          git switch -c "$branch"
+          sed -i -E "s|(digest: )sha256:[a-f0-9]{64}|\1${DIGEST}|" "$file"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Deploy guestbook ${DIGEST:0:19}"
+          git push --force origin "$branch"
+
+          gh pr create --repo "$GITOPS_REPO" --base main --head "$branch" \
+            --title "Deploy guestbook ${DIGEST:0:19}" \
+            --body "Updates the lab overlay to \`${DIGEST}\`.
+
+          Source commit: ${SOURCE_SHA}
+          Build: ${RUN_URL}
+
+          Merging this pull request lets Argo CD roll the new image out."

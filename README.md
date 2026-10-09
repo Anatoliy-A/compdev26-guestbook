@@ -4,6 +4,7 @@ A small Go web app for the CompDev2026 AKS lab. Visitors sign a guestbook, and e
 
 - Authentication is Microsoft Entra ID only, through `DefaultAzureCredential`. On AKS, Workload Identity supplies it. There are no keys or connection strings.
 - The image is built and published to GHCR by GitHub Actions. This repository never deploys to Kubernetes; Argo CD does that from `compdev26-gitops`.
+- After each push to `main` or a `v*` tag, the workflow opens a pull request in `compdev26-gitops` that sets the new image digest. It only proposes the change; merging that pull request is what deploys. This needs the repository secret `GITOPS_PR_TOKEN`: a fine-grained personal access token limited to the `compdev26-gitops` repository with `Contents` and `Pull requests` read and write.
 
 ## Configuration
 
